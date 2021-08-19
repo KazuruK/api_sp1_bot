@@ -21,13 +21,20 @@ TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 HOMEWORK_STATUSES_API_URL = ('https://praktikum.yandex.ru/api/user_api/'
                              'homework_statuses/')
+WAIT_TIME = 20 * 60
 HEADERS = {'Authorization': f'OAuth {PRAKTIKUM_TOKEN}'}
 bot = telegram.Bot(TELEGRAM_TOKEN)
 
 
 def parse_homework_status(homework):
-    homework_name = homework['homework_name']
-    if homework['status'] == 'rejected':
+    homework_name = homework.get('homework_name')
+    homework_status = homework.get('status')
+    if homework_name is None or homework_status is None:
+        send_message('Неверный ответ сервера.')
+        raise KeyError
+    if homework_status == 'reviewing':
+        return
+    if homework_status == 'rejected':
         verdict = 'К сожалению, в работе нашлись ошибки.'
     else:
         verdict = 'Ревьюеру всё понравилось, работа зачтена!'
@@ -36,9 +43,22 @@ def parse_homework_status(homework):
 
 def get_homeworks(current_timestamp):
     payload = {'from_date': current_timestamp}
-    homework_statuses = requests.get(HOMEWORK_STATUSES_API_URL,
-                                     headers=HEADERS, params=payload)
-    return homework_statuses.json()
+    try:
+        homework_statuses = requests.get(HOMEWORK_STATUSES_API_URL,
+                                         headers=HEADERS, params=payload)
+        json = homework_statuses.json()
+        return json
+    except requests.RequestException as e:
+        error_message = f'Запрос к api Яндекс.Практикума вернул ошибку: {e}'
+        logger.error(error_message)
+    except TypeError as e:
+        error_message = (f'Преобразование ответа Яндекс.Практикума в json'
+                         f' вернуло ошибку: {e}')
+        logger.error(error_message)
+    except ValueError as e:
+        error_message = (f'Преобразование ответа Яндекс.Практикума в json'
+                         f' вернуло ошибку: {e}')
+        logger.error(error_message)
 
 
 def send_message(message):
@@ -53,17 +73,20 @@ def main():
 
     while True:
         try:
-            homework = get_homeworks(current_timestamp)['homeworks']
-            if homework and homework[0]['status'] != 'reviewing':
-                send_message(parse_homework_status(homework[0]))
-                break
-            time.sleep(20 * 60)
+            answer = get_homeworks(current_timestamp)
+            homework = answer['homeworks']
+            if homework:
+                message = parse_homework_status(homework[0])
+                if message:
+                    send_message(message)
+            current_timestamp = answer.get('current_date')
+            time.sleep(WAIT_TIME)
 
         except Exception as e:
             error_message = f'Бот упал с ошибкой: {e}'
             logger.error(error_message)
             send_message(error_message)
-            time.sleep(5)
+            time.sleep(WAIT_TIME)
 
 
 if __name__ == '__main__':
