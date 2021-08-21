@@ -30,8 +30,7 @@ def parse_homework_status(homework):
     homework_name = homework.get('homework_name')
     homework_status = homework.get('status')
     if homework_name is None or homework_status is None:
-        send_message('Неверный ответ сервера.')
-        raise KeyError
+        return 'Неверный ответ сервера.'
     if homework_status == 'reviewing':
         return
     if homework_status == 'rejected':
@@ -46,18 +45,15 @@ def get_homeworks(current_timestamp):
     try:
         homework_statuses = requests.get(HOMEWORK_STATUSES_API_URL,
                                          headers=HEADERS, params=payload)
-        json = homework_statuses.json()
-        return json
+        try:
+            json = homework_statuses.json()
+            return json
+        except (TypeError, ValueError) as e:
+            error_message = ('Преобразование ответа Яндекс.Практикума в json'
+                             f' вернуло ошибку: {e}')
+            logger.error(error_message)
     except requests.RequestException as e:
         error_message = f'Запрос к api Яндекс.Практикума вернул ошибку: {e}'
-        logger.error(error_message)
-    except TypeError as e:
-        error_message = (f'Преобразование ответа Яндекс.Практикума в json'
-                         f' вернуло ошибку: {e}')
-        logger.error(error_message)
-    except ValueError as e:
-        error_message = (f'Преобразование ответа Яндекс.Практикума в json'
-                         f' вернуло ошибку: {e}')
         logger.error(error_message)
 
 
@@ -69,7 +65,7 @@ def send_message(message):
 def main():
     logger.debug('Отслеживание статуса запущено')
     send_message('Запущено отслеживание обновлений ревью')
-    current_timestamp = int(time.time())
+    current_timestamp = 0
 
     while True:
         try:
@@ -77,6 +73,8 @@ def main():
             homework = answer['homeworks']
             if homework:
                 message = parse_homework_status(homework[0])
+                if message == 'Неверный ответ сервера.':
+                    raise KeyError(message)
                 if message:
                     send_message(message)
             current_timestamp = answer.get('current_date')
