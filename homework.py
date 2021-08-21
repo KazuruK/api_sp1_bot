@@ -65,7 +65,7 @@ def send_message(message):
 def main():
     logger.debug('Отслеживание статуса запущено')
     send_message('Запущено отслеживание обновлений ревью')
-    current_timestamp = 0
+    current_timestamp = int(time.time())
 
     while True:
         try:
