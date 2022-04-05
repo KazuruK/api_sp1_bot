@@ -19,8 +19,7 @@ logger.addHandler(logging.FileHandler('bot.log', mode='w'))
 PRAKTIKUM_TOKEN = os.getenv('PRAKTIKUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-HOMEWORK_STATUSES_API_URL = ('https://praktikum.yandex.ru/api/user_api/'
-                             'homework_statuses/')
+HOMEWORK_STATUSES_API_URL = ('https://practicum.yandex.ru/api/user_api/homework_statuses/')
 WAIT_TIME = 20 * 60
 HEADERS = {'Authorization': f'OAuth {PRAKTIKUM_TOKEN}'}
 bot = telegram.Bot(TELEGRAM_TOKEN)
